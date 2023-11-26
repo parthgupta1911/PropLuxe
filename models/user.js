@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   },
   photo: {
     type: String,
-    deafult: "default.jpg",
+    default: "default.jpg", // You had a typo here (deafult instead of default)
   },
   password: {
     type: String,
@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["buyer", "seller", "admin", "govt"],
+    enum: ["user", "admin", "govt"],
     required: true,
   },
   owned: [
@@ -37,8 +37,20 @@ const userSchema = new mongoose.Schema({
       ref: "Property",
     },
   ],
+  // Add fields for OTP verification
+  verificationCode: {
+    type: String,
+  },
+  verified: {
+    type: Boolean,
+    default: false, // Initially set to false
+  },
+  verificationCodeExpires: {
+    type: Date,
+  },
 });
+//userSchema.index({ verified: 1, verificationCodeExpires: 1 });
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model("propsUsers", userSchema);
 
 module.exports = User;

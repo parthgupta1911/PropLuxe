@@ -7,8 +7,16 @@ const propertySchema = new mongoose.Schema({
     unique: true,
   },
   location: {
-    type: String,
-    required: true,
+    type: {
+      type: String,
+      enum: ["Point"], // Specify the type as Point
+      required: true,
+    },
+    coordinates: {
+      type: [Number], // Array of [longitude, latitude]
+      required: true,
+      index: "2dsphere", // Create a 2dsphere index for geospatial queries
+    },
   },
   approved: {
     isApproved: {
@@ -38,16 +46,6 @@ const propertySchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  earnestAmount: {
-    type: Number,
-    required: true,
-    validate: {
-      validator: function (value) {
-        return value < this.purchasePrice;
-      },
-      message: "Earnest amount must be less than the purchase price.",
-    },
-  },
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -63,7 +61,70 @@ const propertySchema = new mongoose.Schema({
       message: "Buyer field is required when the property is sold.",
     },
   },
+  photos: {
+    type: [
+      {
+        type: String,
+      },
+    ],
+    validate: {
+      validator: function (value) {
+        return value.length >= 3;
+      },
+      message: "there must be 3 photos.",
+    },
+  },
+  paidVerification: {
+    type: Boolean,
+    default: false,
+  },
+  minted: {
+    type: Boolean,
+    default: false,
+  },
 });
+
+// Add a custom validator to ensure properties are not within 10 meters of each other
+propertySchema.pre("save", async function (next) {
+  const Property = mongoose.model("Property");
+  const nearbyProperties = await Property.find({
+    _id: { $ne: this._id },
+    location: {
+      $near: {
+        $geometry: {
+          type: "Point",
+          coordinates: this.location.coordinates,
+        },
+        $maxDistance: 10, // 10 meters
+      },
+    },
+  });
+
+  if (nearbyProperties.length > 0) {
+    const nearbyListedProperty = nearbyProperties.find((prop) => prop.seller);
+    if (nearbyListedProperty) {
+      this.invalidate(
+        "location.coordinates",
+        `Property is already listed by ${nearbyListedProperty.seller} within 10 meters.`
+      );
+    } else {
+      this.invalidate(
+        "location.coordinates",
+        "Another property is within 10 meters."
+      );
+    }
+    return next(
+      new Error(
+        "A property can't be listed within 10 meters of another property."
+      )
+    );
+  }
+
+  next();
+});
+
+// Create a 2dsphere index on the location.coordinates field
+propertySchema.index({ location: "2dsphere" });
 
 const Property = mongoose.model("Property", propertySchema);
 
