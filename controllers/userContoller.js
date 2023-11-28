@@ -6,7 +6,7 @@ function generateOTP() {
 }
 const catchAsync = require("../utils/catchAsync.js");
 const User = require("../models/user");
-const { log } = require("console");
+const Property = require("../models/property.js");
 
 // const AppError = require("../utils/appError.js");
 function signToken(user) {
@@ -16,11 +16,6 @@ function signToken(user) {
   });
 }
 exports.signUp = catchAsync(async (req, res, next) => {
-  //console.log("hey");
-  if (!(req.body.role == "user")) {
-    return next(new Error("invalid role"));
-  }
-  // console.log(process.env.APPPASS);
   const otp = generateOTP();
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -41,9 +36,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
   // Send the email
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      console.error("Error sending email:", error);
     } else {
-      // console.log("Email sent:", info.response);
     }
   });
   const expirationTime = new Date(Date.now() + 2 * 60 * 1000);
@@ -52,8 +45,10 @@ exports.signUp = catchAsync(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
     password: req.body.password,
-    role: req.body.role,
+    role: "user",
+    wallet: req.body.wallet,
     verificationCode: otp,
+    wallet: req.body.wallet,
     verificationCodeExpires: expirationTime,
   });
   console.log(newUser.verificationCode);
@@ -62,7 +57,6 @@ exports.signUp = catchAsync(async (req, res, next) => {
     expiresIn,
   });
   const decoded = jwt.verify(token, process.env.JWTVKEY);
-  console.log(decoded);
 
   res.status(200).json({
     name: newUser.name,
@@ -92,13 +86,12 @@ exports.verifyUser = catchAsync(async (req, res, next) => {
   await req.user.save();
   const token = signToken(req.user);
   const decoded = jwt.verify(token, process.env.JWTKEY);
-  console.log(decoded);
   res.status(200).json({ message: "User verified successfully", token });
 });
 exports.resendOTP = catchAsync(async (req, res, next) => {
   const otp = crypto.randomBytes(2).readUInt16BE(0) % 100000; // Generate a random 5-digit number
   const expirationTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
-
+  console.log(otp);
   req.user.verificationCode = otp;
   req.user.verificationCodeExpires = expirationTime;
 
@@ -121,7 +114,6 @@ exports.resendOTP = catchAsync(async (req, res, next) => {
 
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      console.error("Error sending email:", error);
       return res.status(500).json({ message: "Failed to send OTP email" });
     }
 
@@ -131,9 +123,7 @@ exports.resendOTP = catchAsync(async (req, res, next) => {
     });
 
     const decoded = jwt.verify(token, process.env.JWTVKEY);
-    console.log(decoded);
 
-    console.log("Email sent:", info.response);
     res.status(200).json({ message: "New OTP sent successfully", token });
   });
 });
@@ -158,7 +148,6 @@ exports.login = async (req, res) => {
   // If valid, generate a JWT token and send it in the response
   const token = signToken(user);
   const decoded = jwt.verify(token, process.env.JWTKEY);
-  console.log(decoded);
   res.status(200).json({ token });
 };
 exports.deleteAll = async (req, res, next) => {
@@ -200,13 +189,11 @@ exports.verifyVtoken = async (req, res, next) => {
       // Proceed to the next middleware or route handler
       next();
     } catch (error) {
-      // console.log(error);
       return res
         .status(500)
         .json({ message: "An error occurred while checking the user." });
     }
   } catch (error) {
-    // console.log(error);
     return res.status(401).json({ message: "Invalid token or expired." });
   }
 };
@@ -237,13 +224,11 @@ exports.checkVtoken = async (req, res, next) => {
       // Proceed to the next middleware or route handler
       res.status(200).json({ message: "token is valid", user: req.user });
     } catch (error) {
-      // console.log(error);
       return res
         .status(500)
         .json({ message: "An error occurred while checking the user." });
     }
   } catch (error) {
-    // console.log(error);
     return res.status(401).json({ message: "Invalid token or expired." });
   }
 };
@@ -281,7 +266,6 @@ exports.verifytoken = async (req, res, next) => {
         .json({ message: "An error occurred while checking the user." });
     }
   } catch (error) {
-    // console.log(error);
     return res.status(401).json({ message: "Invalid token or expired." });
   }
 };
@@ -308,13 +292,11 @@ exports.checktoken = async (req, res, next) => {
       // Proceed to the next middleware or route handler
       res.status(200).json({ message: "token is valid", user: req.user });
     } catch (error) {
-      // console.log(error);
       return res
         .status(500)
         .json({ message: "An error occurred while checking the user." });
     }
   } catch (error) {
-    // console.log(error);
     return res.status(401).json({ message: "Invalid token or expired." });
   }
 };
@@ -356,4 +338,171 @@ exports.me = async (req, res) => {
   req.user.password = undefined;
   req.user.__v = undefined;
   res.status(200).json(req.user);
+};
+exports.govtbiyerunpaid = async (req, res) => {
+  try {
+    const { role } = req.user;
+
+    let usersWithPaidFor;
+
+    if (role === "govt") {
+      // Send users with at least 1 element in paidFor
+      usersWithPaidFor = await User.aggregate([
+        {
+          $match: {
+            paidFor: { $exists: true, $ne: [] },
+          },
+        },
+      ]);
+    } else if (role === "admin") {
+      // Send users with at least 1 element in govtapprovedFor
+      usersWithPaidFor = await User.aggregate([
+        {
+          $match: {
+            govtapprovedFor: { $exists: true, $ne: [] },
+          },
+        },
+      ]);
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: usersWithPaidFor,
+    });
+  } catch (error) {
+    console.error("Error fetching users with paidFor:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.verifybuyer = async (req, res) => {
+  try {
+    const { userid, propertyid } = req.body;
+    const { role } = req.user;
+
+    const user = await User.findById(userid);
+    const prop = await Property.findById(propertyid);
+
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    if (!prop) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Property not found",
+      });
+    }
+    const approvalArray =
+      role === "govt" ? "govtapprovedFor" : "adminapprovedFor";
+    user[approvalArray].push(propertyid);
+    if (role === "govt" && user.paidFor.includes(propertyid)) {
+      user.paidFor = user.paidFor.filter((id) => id.toString() !== propertyid);
+    }
+    if (role == "admin" && user.govtapprovedFor.includes(propertyid)) {
+      user.govtapprovedFor = user.govtapprovedFor.filter(
+        (id) => id.toString() !== propertyid
+      );
+    }
+    await user.save();
+    res.status(200).json({
+      status: "success",
+      message: `Property approved for the user (${role} stage)`,
+      data: user,
+    });
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "propslux@gmail.com",
+        pass: process.env.APPPASS,
+      },
+    });
+    let text;
+    if (role == "admin") {
+      text = `Congratulations!\nYou have been approved to buy the property ${prop.name}.\nPlease submit the funds ASAP!`;
+    } else {
+      text = `Congratulations!\nYou have been goverment approved to buy the property ${prop.name}.\nPlease wait for admin aprroal`;
+    }
+    const mailOptions = {
+      from: "propslux@gmail.com",
+      to: user.email,
+      subject: `${
+        role === "govt" ? "Government" : "Admin"
+      } Verification Successful!`,
+      text,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+      }
+    });
+  } catch (error) {
+    console.error("Error approving property for user:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.rejectbuyer = async (req, res) => {
+  try {
+    const { userid, propertyid, reason } = req.body;
+
+    const user = await User.findById(userid);
+    const prop = await Property.findById(propertyid);
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+    if (!prop) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+    user.paidFor = user.paidFor.filter((id) => id.toString() !== propertyid);
+    console.log(user.paidFor);
+    await user.save();
+
+    res.status(200).json({
+      status: "success",
+      message: "Property rejected  for the user",
+      data: user,
+    });
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "propslux@gmail.com",
+        pass: process.env.APPPASS,
+      },
+    });
+
+    const mailOptions = {
+      from: "propslux@gmail.com",
+      to: user.email,
+      subject: "goverment verrifaction FAILED! ",
+      text: `your Goverment approval for the purchase of property ${prop.name} has been denied\n provided reason ${reason} \n if you think this was a mistake contact govt@india.com`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        return res.status(500).json({ message: "Failed to send OTP email" });
+      }
+    });
+  } catch (error) {
+    console.error("Error denying property for user:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
 };

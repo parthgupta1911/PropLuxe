@@ -19,19 +19,15 @@ const upload = multer(); // Configure Multer for in-memory storage
 const pina = process.env.PINATA;
 // const pin = "e638937671cb5a4260f4";
 // const siaClient = sia();
-// console.log(pinata);
 const pinataSDK = require("@pinata/sdk");
-const { log } = require("console");
 const pinata = new pinataSDK({ pinataJWTKey: pina });
 // pinata
 //   .testAuthentication()
 //   .then((result) => {
 //     //handle successful authentication here
-//     console.log(result);
 //   })
 //   .catch((err) => {
 //     //handle error here
-//     console.log(err);
 //   });
 async function ipfsClient() {
   const ipfs = await create({
@@ -48,7 +44,6 @@ async function uploadImagesToPinata(photos) {
   const uploadedImageUrls = [];
 
   for (const photo of photos) {
-    // console.log(photo);
     try {
       // Convert the buffer to a readable stream
       const photoStream = Readable.from(photo.buffer);
@@ -63,7 +58,6 @@ async function uploadImagesToPinata(photos) {
       const pinataUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
       uploadedImageUrls.push(pinataUrl);
     } catch (error) {
-      console.error("Error uploading image to Pinata:", error);
       throw new Error("Error uploading image to Pinata.");
     }
   }
@@ -91,8 +85,6 @@ exports.test = async (req, res) => {
         uploadedImageUrls = [];
       }
 
-      // console.log(req.body);
-
       // Respond with the array of Pinata URLs
       res.status(200).json({ links: uploadedImageUrls });
     });
@@ -104,8 +96,7 @@ exports.test = async (req, res) => {
 
 exports.listProperty = async (req, res) => {
   try {
-    // console.log("woo");
-    const { name, purchasePrice, earnestAmount, latitude, longitude } =
+    const { name, bedrooms, bathrooms, sqft, balcony, latitude, longitude } =
       req.body;
 
     // Get the seller ID from req.user
@@ -135,9 +126,12 @@ exports.listProperty = async (req, res) => {
       name,
       location,
       seller,
-      purchasePrice,
-      earnestAmount,
+
       photos: uploadedImageUrls,
+      bedrooms,
+      bathrooms,
+      sqft,
+      balcony,
     });
 
     await property.save();
@@ -155,9 +149,7 @@ exports.listProperty = async (req, res) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("Error sending email:", error);
       } else {
-        console.log("Email sent: " + info.response);
       }
     });
   } catch (error) {
@@ -207,21 +199,10 @@ exports.unlistProperty = async (req, res) => {
 // };
 exports.getAllListings = async (req, res) => {
   try {
-    let { page, perPage } = req.params;
     const { location, verified, maxDistance } = req.body;
 
     // Define the filter object based on the provided conditions
     const filter = {};
-
-    if (!page) {
-      // Set the default page to 1 if not specified
-      page = 1;
-    }
-
-    if (!perPage) {
-      // Set the default perPage to 12 if not specified
-      perPage = 12;
-    }
 
     // Check if location and coordinates are provided
     if (location && location.longitude && location.latitude) {
@@ -236,11 +217,6 @@ exports.getAllListings = async (req, res) => {
           },
         };
       }
-    }
-
-    if (verified === "approved") {
-      filter["approved.isApproved"] = true;
-      filter["govtApproved.isApproved"] = true;
     }
 
     // Find properties matching the filter
@@ -269,24 +245,11 @@ exports.getAllListings = async (req, res) => {
       return (a.distance || Infinity) - (b.distance || Infinity);
     });
 
-    const pageInt = parseInt(page);
-    const perPageInt = parseInt(perPage);
-    const startIndex = (pageInt - 1) * perPageInt;
     const total = updatedProperties.length;
-    const listings = updatedProperties.slice(
-      startIndex,
-      startIndex + perPageInt
-    );
-
-    const totalPages = Math.ceil(total / perPageInt);
 
     res.json({
-      page: pageInt,
-      perPage: perPageInt,
       total,
-      totalPages,
-      listingsInCurrentPage: listings.length,
-      listings,
+      listings: updatedProperties,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -339,9 +302,7 @@ exports.verify = async (req, res, next) => {
     res
       .status(200)
       .json({ message: "Property verified successfully", updatedproperty });
-    // console.log(updatedproperty.seller);
     const to = await User.findById(updatedproperty.seller);
-    // console.log(to);
     const m = to.email;
     const mailOptions = {
       from: "propslux@gmail.com", // replace with your email
@@ -352,9 +313,7 @@ exports.verify = async (req, res, next) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("Error sending email:", error);
       } else {
-        console.log("Email sent: " + info.response);
       }
     });
   } catch (error) {
@@ -382,11 +341,11 @@ exports.listunverified = async (req, res) => {
     if (req.user.role === "admin") {
       unverifiedProperties = await Property.find({
         "approved.isApproved": false,
+        "govtApproved.isApproved": false,
         paidVerification: true,
       });
     } else if (req.user.role === "govt") {
       unverifiedProperties = await Property.find({
-        "approved.isApproved": true,
         "govtApproved.isApproved": false,
         paidVerification: true,
       });
@@ -461,29 +420,19 @@ exports.mint = async (req, res) => {
         .json({ message: "Property is pending goverment approved" });
     }
 
-    const propertyDataString = JSON.stringify(prop);
+    const { name, _id, photos, bedrooms, bathrooms, sqft, balcony } = prop;
+    const p = { name, _id, photos, bedrooms, bathrooms, sqft, balcony };
+
+    const propertyDataString = JSON.stringify(p);
 
     // Upload property data to Pinata
     const pinataUrl = await uploadToPinata(propertyDataString);
-
+    prop.ipfsLink = pinataUrl;
+    await prop.save();
     // Include the Pinata URL in the response
     res.status(200).json({
       message: "Property successfully minted to Pinata",
       pinataUrl: pinataUrl,
-    });
-    const mailOptions = {
-      from: "propslux@gmail.com", // replace with your email
-      to: req.user.email, // replace with the recipient's email
-      subject: "Property Minted",
-      text: `Property "${prop.name}" has been minted. and is on the market`,
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
     });
   } catch (error) {
     console.error(error);
@@ -516,8 +465,6 @@ exports.reject = async (req, res) => {
     res
       .status(200)
       .json({ message: "Property rejected succesfully successfully" });
-    // console.log(updatedproperty.seller);
-    // console.log(to);
 
     const mailOptions = {
       from: "propslux@gmail.com", // replace with your email
@@ -528,9 +475,7 @@ exports.reject = async (req, res) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("Error sending email:", error);
       } else {
-        console.log("Email sent: " + info.response);
       }
     });
   } catch (error) {

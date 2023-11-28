@@ -44,7 +44,10 @@ const propertySchema = new mongoose.Schema({
   },
   purchasePrice: {
     type: Number,
-    required: true,
+  },
+  listed: {
+    type: Boolean,
+    default: false,
   },
   seller: {
     type: mongoose.Schema.Types.ObjectId,
@@ -81,6 +84,32 @@ const propertySchema = new mongoose.Schema({
   minted: {
     type: Boolean,
     default: false,
+  },
+  ipfsLink: {
+    type: String, // Assuming the link is a string
+  },
+  bedrooms: {
+    type: Number,
+    required: true,
+    min: 1, // Minimum value allowed is 1
+  },
+  bathrooms: {
+    type: Number,
+    required: true,
+    min: 1, // Minimum value allowed is 1
+  },
+  sqft: {
+    type: Number,
+    required: true,
+    min: 1, // Minimum value allowed is 1
+  },
+  balcony: {
+    type: Number,
+    required: true,
+    min: 1, // Minimum value allowed is 1
+  },
+  nftid: {
+    type: Number,
   },
 });
 

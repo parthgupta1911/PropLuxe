@@ -22,6 +22,24 @@ router.delete(
   userContoller.deleteAll
 );
 router.delete("/deleteMe", userContoller.verifyVtoken, userContoller.deleteME);
+router.post(
+  "/paidbuyers",
+  userContoller.verifytoken,
+  userContoller.restrictTo(["govt"]),
+  userContoller.govtbiyerunpaid
+);
+router.post(
+  "/approvebuyer",
+  userContoller.verifytoken,
+  userContoller.restrictTo(["govt"]),
+  userContoller.verifybuyer
+);
+router.post(
+  "/rejectbuyer",
+  userContoller.verifytoken,
+  userContoller.restrictTo(["govt"]),
+  userContoller.rejectbuyer
+);
 // router.route("/login").post(userContoller.login);
 // router.get("/logout", userContoller.logout);
 // router.use(userController.restrictTo("admin"));

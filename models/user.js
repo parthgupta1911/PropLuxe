@@ -41,12 +41,29 @@ const userSchema = new mongoose.Schema({
   verificationCode: {
     type: String,
   },
+  adminapprovedFor: {
+    type: [mongoose.Schema.Types.ObjectId],
+    default: [],
+  },
+  govtapprovedFor: {
+    type: [mongoose.Schema.Types.ObjectId],
+    default: [],
+  },
+  paidFor: {
+    type: [mongoose.Schema.Types.ObjectId],
+    default: [],
+  },
   verified: {
     type: Boolean,
     default: false, // Initially set to false
   },
   verificationCodeExpires: {
     type: Date,
+  },
+  wallet: {
+    type: String,
+    required: true,
+    unique: true,
   },
 });
 //userSchema.index({ verified: 1, verificationCodeExpires: 1 });
