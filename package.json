@@ -10,6 +10,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": "18.16.1"
+  },
   "dependencies": {
     "@pinata/sdk": "^2.1.0",
     "axios": "^1.6.2",
