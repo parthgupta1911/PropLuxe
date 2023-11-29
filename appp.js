@@ -955,6 +955,7 @@ const propverifycontract = new ethers.Contract(propverify, propabi, provider);
 propverifycontract.on(
   "VerificationFeePaid",
   async (propertyId, payer, event) => {
+    console.log("chala accha");
     try {
       const property = await Property.findById(propertyId);
 
@@ -978,6 +979,7 @@ const buyerverifycontract = new ethers.Contract(
 buyerverifycontract.on(
   "VerificationFeePaid",
   async (propertyId, id, payer, event) => {
+    console.log("chala");
     try {
       const property = await Property.findById(propertyId);
       if (!property) {
