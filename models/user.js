@@ -25,18 +25,6 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin", "govt"],
     required: true,
   },
-  owned: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Property",
-    },
-  ],
-  listed: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Property",
-    },
-  ],
   // Add fields for OTP verification
   verificationCode: {
     type: String,

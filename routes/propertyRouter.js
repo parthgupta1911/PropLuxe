@@ -18,11 +18,11 @@ router.post(
   userController.verifytoken,
   propertyController.unlistProperty
 );
-router.post(
-  "/test",
+// router.post(
+//   "/test",
 
-  propertyController.test
-);
+//   propertyController.test
+// );
 router.post(
   "/getmine",
   userController.verifytoken,
@@ -46,7 +46,7 @@ router.post(
   userController.restrictTo(["govt", "admin"]),
   propertyController.listunverified
 );
-router.post("/mint", userController.verifytoken, propertyController.mint);
+router.post("/upload", userController.verifytoken, propertyController.upload);
 
 // Get all listings
 router.post(

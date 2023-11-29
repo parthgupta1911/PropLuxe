@@ -38,31 +38,13 @@ const propertySchema = new mongoose.Schema({
       ref: "User",
     },
   },
-  sold: {
-    type: Boolean,
-    default: false,
-  },
-  purchasePrice: {
+  price: {
     type: Number,
-  },
-  listed: {
-    type: Boolean,
-    default: false,
   },
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-  },
-  buyer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    validate: {
-      validator: function () {
-        return this.sold || !this.buyer;
-      },
-      message: "Buyer field is required when the property is sold.",
-    },
   },
   photos: {
     type: [
@@ -109,7 +91,18 @@ const propertySchema = new mongoose.Schema({
     min: 1, // Minimum value allowed is 1
   },
   nftid: {
-    type: Number,
+    type: String,
+  },
+  listed: {
+    type: Boolean,
+    default: false,
+  },
+  canbelisted: {
+    type: Boolean,
+    default: false,
+  },
+  nftlink: {
+    type: String,
   },
 });
 

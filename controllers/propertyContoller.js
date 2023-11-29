@@ -202,7 +202,9 @@ exports.getAllListings = async (req, res) => {
     const { location, verified, maxDistance } = req.body;
 
     // Define the filter object based on the provided conditions
-    const filter = {};
+    const filter = {
+      listed: true, // Include only properties where the 'listed' field is true
+    };
 
     // Check if location and coordinates are provided
     if (location && location.longitude && location.latitude) {
@@ -288,11 +290,11 @@ exports.verify = async (req, res, next) => {
     if (user.role === "admin") {
       property.approved.isApproved = true;
       property.approved.approvedBy = user._id;
-      text = `Property "${property.name}" has been admin verified. Now pending goverment verified.`;
+      text = `Property "${property.name}" has been goverment verified. Now pending admin verification.`;
     } else if (user.role === "govt") {
       property.govtApproved.isApproved = true;
       property.govtApproved.approvedBy = user._id;
-      text = `Property "${property.name}" has been both admin and govt verified. and is ready to  be minted`;
+      text = `Property "${property.name}" has been both admin and govt verified. and is ready to be minted`;
     }
 
     // Save the updated property
@@ -341,13 +343,15 @@ exports.listunverified = async (req, res) => {
     if (req.user.role === "admin") {
       unverifiedProperties = await Property.find({
         "approved.isApproved": false,
-        "govtApproved.isApproved": false,
+        "govtApproved.isApproved": true,
         paidVerification: true,
+        ipfsLink: { $exists: true },
       });
     } else if (req.user.role === "govt") {
       unverifiedProperties = await Property.find({
         "govtApproved.isApproved": false,
         paidVerification: true,
+        ipfsLink: { $exists: true },
       });
     }
 
@@ -390,7 +394,7 @@ async function uploadToPinata(data) {
   }
 }
 
-exports.mint = async (req, res) => {
+exports.upload = async (req, res) => {
   try {
     // Get property ID from req.body
     const { propertyId } = req.body;
@@ -408,16 +412,6 @@ exports.mint = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Unauthorized to mint this property" });
-    }
-
-    // Check if the property is approved and govtApproved
-    if (!prop.approved.isApproved) {
-      return res.status(400).json({ message: "Property is not approved " });
-    }
-    if (!prop.govtApproved.isApproved) {
-      return res
-        .status(400)
-        .json({ message: "Property is pending goverment approved" });
     }
 
     const { name, _id, photos, bedrooms, bathrooms, sqft, balcony } = prop;
