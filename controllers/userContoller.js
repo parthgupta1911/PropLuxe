@@ -32,7 +32,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     subject: "Your OTP Verification Code",
     text: `Your OTP is: ${otp} valid for 2 mins`,
   };
-
+  // console.log(otp);
   // Send the email
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
@@ -40,18 +40,20 @@ exports.signUp = catchAsync(async (req, res, next) => {
     }
   });
   const expirationTime = new Date(Date.now() + 2 * 60 * 1000);
+  const delat = new Date(Date.now() + 10 * 60 * 1000);
 
   const newUser = await User.create({
     name: req.body.name,
     email: req.body.email,
     password: req.body.password,
     role: "user",
+    delat,
     wallet: req.body.wallet,
     verificationCode: otp,
     wallet: req.body.wallet,
     verificationCodeExpires: expirationTime,
   });
-  console.log(newUser.verificationCode);
+
   const expiresIn = 600;
   const token = jwt.sign({ name: newUser.name }, process.env.JWTVKEY, {
     expiresIn,
@@ -69,32 +71,34 @@ exports.verifyUser = catchAsync(async (req, res, next) => {
   const { otp } = req.body;
 
   // Find the user by email and check if the OTP matches and is not expired
-
-  if (req.user.verificationCode !== otp) {
+  const u = await User.findOne({ verificationCode: otp });
+  console.log(u);
+  if (!u) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
-  if (req.user.verificationCodeExpires < new Date()) {
+  if (u.verificationCodeExpires < new Date()) {
     return res.status(400).json({ message: "OTP has expired" });
   }
 
   // Update the user to mark them as verified and remove verification fields
-  req.user.verified = true;
-  req.user.verificationCode = undefined;
-  req.user.verificationCodeExpires = undefined;
-
-  await req.user.save();
-  const token = signToken(req.user);
+  u.verified = true;
+  u.verificationCode = undefined;
+  u.verificationCodeExpires = undefined;
+  u.delat = undefined;
+  await u.save();
+  const token = signToken(u);
   const decoded = jwt.verify(token, process.env.JWTKEY);
   res.status(200).json({ message: "User verified successfully", token });
 });
 exports.resendOTP = catchAsync(async (req, res, next) => {
   const otp = crypto.randomBytes(2).readUInt16BE(0) % 100000; // Generate a random 5-digit number
   const expirationTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
-  console.log(otp);
+  const delat = new Date(Date.now() + 10 * 60 * 1000);
+
   req.user.verificationCode = otp;
   req.user.verificationCodeExpires = expirationTime;
-
+  req.user.delat = delat;
   await req.user.save();
 
   const transporter = nodemailer.createTransport({

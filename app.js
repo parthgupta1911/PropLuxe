@@ -14,5 +14,5 @@ mongoose.connect(uri).then(() => {
 });
 const app = require("./appp");
 const server = app.listen(port, () => {
-  console.log(`started the server`);
+  console.log(`started the server simple otp`);
 });

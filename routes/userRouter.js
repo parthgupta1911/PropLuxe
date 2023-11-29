@@ -3,9 +3,7 @@ const userContoller = require("../controllers/userContoller");
 
 const router = express.Router();
 router.route("/signup").post(userContoller.signUp);
-router
-  .route("/verify")
-  .post(userContoller.verifyVtoken, userContoller.verifyUser);
+router.route("/verify").post(userContoller.verifyUser);
 router
   .route("/resendotp")
   .post(userContoller.verifyVtoken, userContoller.resendOTP);

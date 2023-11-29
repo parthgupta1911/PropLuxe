@@ -48,6 +48,9 @@ const userSchema = new mongoose.Schema({
   verificationCodeExpires: {
     type: Date,
   },
+  delat: {
+    type: Date,
+  },
   wallet: {
     type: String,
     required: true,
