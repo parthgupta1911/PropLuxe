@@ -19,8 +19,8 @@ app.use(cookieParser());
 
 const propverify = "0x1b67dc3EAB89A7EE6aeeb73CF229B1109CdABA6b";
 const buyerverify = "0xC0AaeBcef5CD77c4f2a5a6705EA0Ddd72786437e";
-const real = "0x4351e4157d0AD2Ea38917e6D614bE55889a865fD";
-const escrow = "0x421385dD4d4D5D527afEf833C6D9CA65AC37d4c2";
+const real = "0xe916BeeA0314077e45A59EF386022B27aF585718";
+const escrow = "0x18CbdCc86f6DFa77034921DB5F7309bDe58Db569";
 const propabi = [
   {
     inputs: [],
@@ -807,6 +807,12 @@ const escrowabi = [
       },
       {
         indexed: false,
+        internalType: "string",
+        name: "userId",
+        type: "string",
+      },
+      {
+        indexed: false,
         internalType: "address",
         name: "buyer",
         type: "address",
@@ -906,6 +912,11 @@ const escrowabi = [
         internalType: "address",
         name: "nftaddr",
         type: "address",
+      },
+      {
+        internalType: "string",
+        name: "userId",
+        type: "string",
       },
     ],
     name: "purchaseNFT",
@@ -1010,7 +1021,7 @@ realcontract.on("NFTMinted", async (nftid, nfturi, event) => {
     prop.nftid = nftid;
     prop.minted = true;
     const n = Number(nftid);
-    prop.nftlink = `https://goerli.etherscan.io/nft/0x4351e4157d0ad2ea38917e6d614be55889a865fd/${n}`;
+    prop.nftlink = `https://goerli.etherscan.io/nft/0xe916beea0314077e45a59ef386022b27af585718/${n}`;
     await prop.save();
   } catch (err) {}
 });
@@ -1040,14 +1051,16 @@ escrowcontract.on("NFTListed", async (nftid, price, seller, event) => {
     await prop.save();
   } catch (err) {}
 });
-escrowcontract.on("NFTPurchased", async (nftid, buyer, event) => {
+escrowcontract.on("NFTPurchased", async (nftid, bid, buyer, event) => {
   try {
     const prop = await Property.findOne({ listed: true, nftid });
     if (!prop) {
       return;
     }
-    const b = await User.findOne({ wallet: buyer });
+    const b = await User.findById(bid);
     if (!b) {
+      prop.seller = "00000000";
+      await prop.save();
       return;
     }
     prop.seller = b._id;

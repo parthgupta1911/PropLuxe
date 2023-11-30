@@ -32,7 +32,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     subject: "Your OTP Verification Code",
     text: `Your OTP is: ${otp} valid for 2 mins`,
   };
-  // console.log(otp);
+  console.log(otp);
   // Send the email
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
@@ -40,7 +40,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     }
   });
   const expirationTime = new Date(Date.now() + 2 * 60 * 1000);
-  const delat = new Date(Date.now() + 10 * 60 * 1000);
+  const delat = new Date(Date.now() + 2 * 60 * 1000);
 
   const newUser = await User.create({
     name: req.body.name,
@@ -48,10 +48,7 @@ exports.signUp = catchAsync(async (req, res, next) => {
     password: req.body.password,
     role: "user",
     delat,
-    wallet: req.body.wallet,
     verificationCode: otp,
-    wallet: req.body.wallet,
-    verificationCodeExpires: expirationTime,
   });
 
   const expiresIn = 600;
@@ -69,10 +66,8 @@ exports.signUp = catchAsync(async (req, res, next) => {
 
 exports.verifyUser = catchAsync(async (req, res, next) => {
   const { otp } = req.body;
-
   // Find the user by email and check if the OTP matches and is not expired
   const u = await User.findOne({ verificationCode: otp });
-  console.log(u);
   if (!u) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
@@ -474,7 +469,6 @@ exports.rejectbuyer = async (req, res) => {
       });
     }
     user.paidFor = user.paidFor.filter((id) => id.toString() !== propertyid);
-    console.log(user.paidFor);
     await user.save();
 
     res.status(200).json({

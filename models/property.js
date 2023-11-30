@@ -52,12 +52,6 @@ const propertySchema = new mongoose.Schema({
         type: String,
       },
     ],
-    validate: {
-      validator: function (value) {
-        return value.length >= 3;
-      },
-      message: "there must be 3 photos.",
-    },
   },
   paidVerification: {
     type: Boolean,

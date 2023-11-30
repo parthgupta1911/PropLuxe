@@ -121,13 +121,10 @@ exports.listProperty = async (req, res) => {
         error: "Property validation failed: photos: there must be 3 photos.",
       });
     }
-    const uploadedImageUrls = await uploadImagesToPinata(photos);
     const property = new Property({
       name,
       location,
       seller,
-
-      photos: uploadedImageUrls,
       bedrooms,
       bathrooms,
       sqft,
@@ -135,7 +132,9 @@ exports.listProperty = async (req, res) => {
     });
 
     await property.save();
-
+    const uploadedImageUrls = await uploadImagesToPinata(photos);
+    property.photos = uploadedImageUrls;
+    await property.save();
     res.status(201).json({
       status: `Property "${property.name}" has been added. please pay verification fee.`,
       property,

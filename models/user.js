@@ -51,14 +51,9 @@ const userSchema = new mongoose.Schema({
   delat: {
     type: Date,
   },
-  wallet: {
-    type: String,
-    required: true,
-    unique: true,
-  },
 });
 //userSchema.index({ verified: 1, verificationCodeExpires: 1 });
 
-const User = mongoose.model("propsUsers", userSchema);
+const User = mongoose.model("Users", userSchema);
 
 module.exports = User;
